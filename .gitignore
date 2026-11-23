@@ -1,0 +1,11 @@
+# OS and editor files
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/
+
+# Never commit demo videos (host them on YouTube)
+*.mp4
+*.webm
+*.mov

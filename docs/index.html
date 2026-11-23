@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OctoV: Windows Binary Analysis Workbench for Defenders</title>
+<meta name="description" content="OctoV: a Windows binary analysis workbench for defenders. Explained, evidence-backed triage from first look to detection rule. Fully local.">
+<meta name="referrer" content="no-referrer">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self'; style-src 'unsafe-inline'; script-src 'none'; base-uri 'none'; form-action 'none'">
+<style>
+  :root {
+    --bg: #0b0912;
+    --bg-2: #12101c;
+    --card: #171427;
+    --line: #2a2540;
+    --text: #ece9f6;
+    --muted: #a39cbd;
+    --accent: #8b5cf6;
+    --accent-2: #6d28d9;
+    --accent-soft: rgba(139, 92, 246, .14);
+    --radius: 14px;
+    --max: 1120px;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    font: 16px/1.65 system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    color: var(--text);
+    background:
+      radial-gradient(1200px 600px at 80% -10%, rgba(109, 40, 217, .28), transparent 60%),
+      radial-gradient(900px 500px at -10% 10%, rgba(139, 92, 246, .12), transparent 60%),
+      var(--bg);
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: #c4b5fd; text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  .wrap { max-width: var(--max); margin: 0 auto; padding: 0 24px; }
+
+  nav {
+    position: sticky; top: 0; z-index: 10;
+    background: rgba(11, 9, 18, .82);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--line);
+  }
+  nav .wrap { display: flex; align-items: center; justify-content: space-between; height: 60px; gap: 16px; }
+  nav .brand { font-weight: 700; letter-spacing: .3px; color: var(--text); display: flex; align-items: center; gap: 10px; }
+  .mark { width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center; font-size: 13px; font-weight: 800; color: #fff; background: linear-gradient(135deg, var(--accent), var(--accent-2)); }
+  nav ul { list-style: none; display: flex; gap: 22px; margin: 0; padding: 0; font-size: 14px; }
+  nav ul a { color: var(--muted); }
+  nav ul a:hover { color: var(--text); text-decoration: none; }
+
+  header.hero { padding: 80px 0 56px; text-align: center; }
+  .hero .mark.big { width: 96px; height: 96px; border-radius: 26px; font-size: 38px; margin: 0 auto; box-shadow: 0 20px 60px rgba(109, 40, 217, .4); }
+  .hero h1 { font-size: clamp(2.4rem, 6vw, 4rem); margin: 24px 0 8px; letter-spacing: -1px; }
+  .hero h1 span { background: linear-gradient(90deg, #c4b5fd, var(--accent)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .hero p.tagline { font-size: clamp(1.05rem, 2.2vw, 1.3rem); color: var(--text); max-width: 780px; margin: 0 auto 22px; }
+  .pills { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin: 0 0 22px; }
+  .pill { font-size: 12.5px; padding: 5px 12px; border-radius: 999px; border: 1px solid var(--line); background: var(--bg-2); color: var(--muted); white-space: nowrap; }
+  .pill.accent { border-color: var(--accent-2); background: var(--accent-soft); color: #ddd6fe; }
+  .context { color: var(--muted); font-size: 15px; }
+  .context b { color: var(--text); }
+  .hero-shot { margin: 40px auto 0; max-width: 1040px; border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; box-shadow: 0 30px 80px rgba(0, 0, 0, .55), 0 0 0 1px rgba(139, 92, 246, .15); }
+  .hero-shot img { display: block; width: 100%; height: auto; }
+
+  section { padding: 56px 0; border-top: 1px solid var(--line); }
+  h2 { font-size: 1.75rem; margin: 0 0 22px; letter-spacing: -.3px; }
+  h2::before { content: ""; display: inline-block; width: 10px; height: 10px; border-radius: 3px; background: var(--accent); margin-right: 12px; vertical-align: middle; transform: translateY(-2px); }
+  p { margin: 0 0 14px; }
+  .lead { color: var(--muted); max-width: 860px; }
+  .lead b { color: var(--text); }
+
+  .grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 20px; }
+  .card h3 { margin: 0 0 6px; font-size: 1.02rem; color: #ddd6fe; }
+  .card p { margin: 0; color: var(--muted); font-size: 15px; }
+  .card.hl { border-color: var(--accent-2); background: linear-gradient(180deg, rgba(109, 40, 217, .18), var(--card)); }
+
+  .diagram { background: var(--bg-2); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px; overflow-x: auto; }
+  .diagram svg { display: block; width: 100%; min-width: 760px; height: auto; }
+  .flow { color: var(--muted); margin-top: 14px; font-size: 15px; }
+
+  table { width: 100%; border-collapse: collapse; background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
+  th, td { text-align: left; padding: 12px 16px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { background: #1d1932; color: #ddd6fe; font-weight: 600; font-size: 14px; }
+  tr:last-child td { border-bottom: 0; }
+  td:first-child { color: var(--muted); white-space: nowrap; }
+  .note { color: var(--muted); font-size: 14px; margin-top: 12px; border-left: 3px solid var(--accent); padding-left: 12px; }
+
+  .gallery { display: grid; gap: 18px; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); }
+  figure { margin: 0; background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
+  figure a { display: block; }
+  figure img { display: block; width: 100%; height: 220px; object-fit: cover; object-position: left top; border-bottom: 1px solid var(--line); transition: transform .25s ease; }
+  figure a:hover img { transform: scale(1.02); }
+  figcaption { padding: 12px 16px; font-size: 14px; color: var(--muted); }
+  figcaption b { color: var(--text); }
+  .video { margin-top: 18px; padding: 16px 20px; border: 1px dashed var(--accent-2); border-radius: var(--radius); background: var(--accent-soft); color: #ddd6fe; }
+
+  .two { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
+  ul.list { margin: 0; padding-left: 20px; }
+  ul.list li { margin: 6px 0; color: var(--muted); }
+  ul.list li b { color: var(--text); }
+
+  .cta { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 18px; }
+  .btn { display: inline-block; padding: 10px 18px; border-radius: 10px; border: 1px solid var(--accent-2); background: var(--accent-2); color: #fff; font-weight: 600; font-size: 15px; }
+  .btn.ghost { background: transparent; color: #ddd6fe; }
+  .btn:hover { text-decoration: none; filter: brightness(1.12); }
+
+  footer { padding: 32px 0 48px; border-top: 1px solid var(--line); color: var(--muted); font-size: 14px; text-align: center; }
+
+  @media (max-width: 720px) {
+    nav ul { display: none; }
+    header.hero { padding: 52px 0 40px; }
+    td:first-child { white-space: normal; }
+    figure img { height: 180px; }
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="wrap">
+    <a class="brand" href="#top"><span class="mark">OV</span>OctoV</a>
+    <ul>
+      <li><a href="#overview">Overview</a></li>
+      <li><a href="#features">Features</a></li>
+      <li><a href="#architecture">Architecture</a></li>
+      <li><a href="#results">Results</a></li>
+      <li><a href="#screenshots">Screenshots</a></li>
+      <li><a href="#roadmap">Roadmap</a></li>
+      <li><a href="#source">Contact</a></li>
+    </ul>
+  </div>
+</nav>
+
+<header class="hero" id="top">
+  <div class="wrap">
+    <div class="mark big">OV</div>
+    <h1><span>OctoV</span></h1>
+    <p class="tagline">A Windows binary analysis workbench for defenders: explained, evidence-backed triage from first look to detection rule.</p>
+    <div class="pills">
+      <span class="pill accent">status: in active development · pre-release</span>
+      <span class="pill">source: private</span>
+      <span class="pill">Python</span>
+      <span class="pill">React · TypeScript</span>
+      <span class="pill">Rust native core</span>
+      <span class="pill">Windows</span>
+      <span class="pill">100% local</span>
+    </div>
+    <p class="context"><b>For SOC and DFIR teams, detection engineers, threat hunters and security training.</b><br>
+    Fully local: samples never leave the machine · First-class Azerbaijani interface</p>
+    <div class="hero-shot"><img src="screenshots/control-flow-graph.png" alt="OctoV workbench showing a control-flow graph next to the code"></div>
+  </div>
+</header>
+
+<main>
+
+<section id="overview">
+  <div class="wrap">
+    <h2>Overview</h2>
+    <p class="lead">When a suspicious Windows executable lands on an analyst's desk, the questions are always the same. What does it do? How dangerous is it? What should we detect and block? Answering them usually means juggling several separate tools and reading raw disassembly, which takes time and expertise that many teams don't have. Sensitive samples often can't be uploaded to online services at all.</p>
+    <p class="lead"><b>OctoV</b> brings that work into one desktop workbench. Opening a file starts an automatic triage: a risk score, the findings behind it, extracted indicators and mapped adversary techniques. Every finding is explained in plain language, points to its exact evidence in the file, and suggests a next step, so beginners can follow the reasoning and experienced analysts can verify it quickly. From there the analyst can go as deep as needed (disassembly, control-flow graphs, call relations, decompiled code) and finish with ready-to-use detection content.</p>
+    <p class="lead">OctoV is <b>defensive only</b> and <b>fully local</b>: samples never leave the machine. An optional AI analyst can help explain a sample, but it only ever sees extracted evidence that the analyst has reviewed and confirmed. OctoV also ships with a <b>first-class Azerbaijani interface</b> alongside English.</p>
+  </div>
+</section>
+
+<section id="features">
+  <div class="wrap">
+    <h2>Key features</h2>
+    <div class="grid">
+      <div class="card hl"><h3>Instant triage on open</h3><p>A 0–100 risk score with every contributing finding listed, so analysts know within seconds where to look.</p></div>
+      <div class="card hl"><h3>Explained, evidence-backed findings</h3><p>Plain-language explanation, suggested next step and exact location for each finding. Analysts confirm, or mark false positive or benign, and the result updates.</p></div>
+      <div class="card"><h3>Strings and IOC extraction</h3><p>URLs, domains, IPs, registry keys, mutexes, commands and more, categorised and searchable, including hidden strings. Export as CSV or JSON.</p></div>
+      <div class="card"><h3>MITRE ATT&amp;CK mapping</h3><p>Detected behaviour is linked to ATT&amp;CK techniques.</p></div>
+      <div class="card"><h3>Detection engineering output</h3><p>Generate YARA and Sigma rules from what was found.</p></div>
+      <div class="card"><h3>Deep-dive code views</h3><p>Disassembly, control-flow graph, hex view and an optional decompiled pseudo-C view, all kept in sync.</p></div>
+      <div class="card"><h3>Built for large binaries</h3><p>Call-relations graph, byte/text/constant search, symbols and a file layout map stay fast with tens of thousands of functions.</p></div>
+      <div class="card"><h3>Sample comparison</h3><p>Compare two builds function by function: identical, changed (with similarity) or only in one. You can bring your names and notes over to the new version.</p></div>
+      <div class="card"><h3>Library-function recognition</h3><p>Known runtime and library code is named and set aside, so attention goes to the sample's own code.</p></div>
+      <div class="card hl"><h3>Optional AI analyst</h3><p>Evidence-only, shown and confirmed before every send, citations verified. Works with any OpenAI-compatible endpoint, including local models.</p></div>
+      <div class="card hl"><h3>First-class Azerbaijani interface</h3><p>The full UI and all finding explanations in English and Azerbaijani, with night and normal display modes.</p></div>
+      <div class="card hl"><h3>Fully local, private by design</h3><p>Samples never leave the machine, there is no telemetry, and files are analysed without ever being run.</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="architecture">
+  <div class="wrap">
+    <h2>Architecture</h2>
+    <div class="diagram">
+      <svg viewBox="0 0 1000 400" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="High-level architecture: the analyst uses the desktop app or browser mode, which talks to a local application interface. Behind it are the static analysis core, automatic triage, code views, sample comparison, optional analysis engines and decompiler, an optional AI analyst, local sessions and exports. Only the optional AI analyst connects out, to an OpenAI-compatible endpoint, with evidence only and after confirmation.">
+        <defs>
+          <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" fill="#8b5cf6"/>
+          </marker>
+          <linearGradient id="g" x1="0" x2="0" y1="0" y2="1">
+            <stop offset="0" stop-color="#211b3a"/><stop offset="1" stop-color="#171427"/>
+          </linearGradient>
+        </defs>
+        <rect x="10" y="10" width="866" height="380" rx="16" fill="none" stroke="#2a2540" stroke-dasharray="6 6"/>
+        <text x="24" y="32" font-family="system-ui, Segoe UI, Arial, sans-serif" font-size="12" fill="#a39cbd">Analyst's machine (everything runs locally)</text>
+        <g fill="url(#g)" stroke="#6d28d9" stroke-width="1.4">
+          <rect x="24" y="190" width="150" height="60" rx="10"/>
+          <rect x="204" y="190" width="166" height="60" rx="10" stroke="#8b5cf6" stroke-width="2"/>
+          <rect x="430" y="44" width="220" height="50" rx="10"/>
+          <rect x="430" y="114" width="220" height="50" rx="10"/>
+          <rect x="430" y="184" width="220" height="50" rx="10"/>
+          <rect x="430" y="254" width="220" height="50" rx="10"/>
+          <rect x="430" y="324" width="220" height="50" rx="10"/>
+          <rect x="690" y="80" width="172" height="58" rx="10"/>
+          <rect x="690" y="206" width="172" height="58" rx="10"/>
+          <rect x="690" y="290" width="172" height="58" rx="10"/>
+          <rect x="890" y="76" width="100" height="66" rx="10" stroke="#c4b5fd" stroke-dasharray="4 3"/>
+        </g>
+        <g font-family="system-ui, Segoe UI, Arial, sans-serif" text-anchor="middle" fill="#ece9f6">
+          <text x="99" y="216" font-size="14" font-weight="600">Analyst</text>
+          <text x="99" y="234" font-size="11" fill="#a39cbd">desktop app or browser</text>
+          <text x="287" y="216" font-size="14" font-weight="600">Local application</text>
+          <text x="287" y="234" font-size="12" fill="#a39cbd">interface</text>
+          <text x="540" y="74" font-size="13.5" font-weight="600">Static analysis core</text>
+          <text x="540" y="135" font-size="13.5" font-weight="600">Automatic triage</text>
+          <text x="540" y="152" font-size="11" fill="#a39cbd">score, findings, IOCs, ATT&amp;CK</text>
+          <text x="540" y="205" font-size="13.5" font-weight="600">Code views</text>
+          <text x="540" y="222" font-size="11" fill="#a39cbd">disassembly, graph, relations, search</text>
+          <text x="540" y="284" font-size="13.5" font-weight="600">Sample comparison</text>
+          <text x="540" y="345" font-size="13.5" font-weight="600">Optional engines</text>
+          <text x="540" y="362" font-size="11" fill="#a39cbd">and decompiler</text>
+          <text x="776" y="104" font-size="13.5" font-weight="600">Optional AI analyst</text>
+          <text x="776" y="122" font-size="11" fill="#a39cbd">evidence only, confirmed</text>
+          <text x="776" y="230" font-size="13.5" font-weight="600">Local sessions</text>
+          <text x="776" y="248" font-size="11" fill="#a39cbd">notes and verdicts</text>
+          <text x="776" y="314" font-size="13.5" font-weight="600">Exports</text>
+          <text x="776" y="332" font-size="11" fill="#a39cbd">YARA, Sigma, IOCs</text>
+          <text x="940" y="102" font-size="12" font-weight="600">AI endpoint</text>
+          <text x="940" y="118" font-size="10.5" fill="#a39cbd">OpenAI-compatible</text>
+          <text x="940" y="132" font-size="10.5" fill="#a39cbd">remote or local</text>
+        </g>
+        <g fill="none" stroke="#8b5cf6" stroke-width="1.6">
+          <path d="M174,220 H202" marker-end="url(#arr)"/>
+          <path d="M370,220 H400"/>
+          <path d="M400,69 V349"/>
+          <path d="M400,69 H428" marker-end="url(#arr)"/>
+          <path d="M400,139 H428" marker-end="url(#arr)"/>
+          <path d="M400,209 H428" marker-end="url(#arr)"/>
+          <path d="M400,279 H428" marker-end="url(#arr)"/>
+          <path d="M400,349 H428" marker-end="url(#arr)"/>
+          <path d="M400,104 H415 M665,104 H688" marker-end="url(#arr)"/>
+          <path d="M400,244 H415 M665,244 H688" marker-end="url(#arr)"/>
+          <path d="M400,314 H415 M665,314 H688" marker-end="url(#arr)"/>
+        </g>
+        <g fill="none" stroke="#8b5cf6" stroke-width="1.2" stroke-dasharray="2 4" opacity=".7">
+          <path d="M415,104 H665"/>
+          <path d="M415,244 H665"/>
+          <path d="M415,314 H665"/>
+        </g>
+        <path d="M862,109 H888" fill="none" stroke="#c4b5fd" stroke-width="1.4" stroke-dasharray="5 4" marker-end="url(#arr)"/>
+      </svg>
+    </div>
+    <p class="flow">Everything inside the workbench runs on the analyst's machine. The only optional outbound connection is the AI analyst, and only after the analyst confirms what will be sent.</p>
+  </div>
+</section>
+
+<section id="stack">
+  <div class="wrap">
+    <h2>Tech stack</h2>
+    <table>
+      <thead><tr><th>Area</th><th>Technologies</th></tr></thead>
+      <tbody>
+        <tr><td>Core</td><td>Python</td></tr>
+        <tr><td>User interface</td><td>React, TypeScript, Vite, Tailwind CSS, in a native desktop window (Edge WebView2) or a local browser mode</td></tr>
+        <tr><td>Performance</td><td>Optional Rust native core</td></tr>
+        <tr><td>Storage</td><td>Local, file-based sessions (SQLite)</td></tr>
+        <tr><td>Open-source integrations</td><td>Capstone (disassembly); optional: Ghidra (decompiler), capa, FLOSS</td></tr>
+        <tr><td>AI (optional)</td><td>Any OpenAI-compatible endpoint, including local models</td></tr>
+        <tr><td>Quality</td><td>pytest, mypy (strict), ruff, Vitest, GitHub Actions CI on Windows</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section id="results">
+  <div class="wrap">
+    <h2>Measured results</h2>
+    <table>
+      <thead><tr><th>Metric</th><th>Result</th></tr></thead>
+      <tbody>
+        <tr><td>Native core vs. Python path</td><td>~5× faster, less than half the memory</td></tr>
+        <tr><td>False-positive check on clean files</td><td>~99% of ~4,370 Windows 11 system files scored low risk</td></tr>
+        <tr><td>Two-sample comparison</td><td>~3 s</td></tr>
+      </tbody>
+    </table>
+    <p class="note">Measured by the developer during internal testing. Not an independent benchmark.</p>
+  </div>
+</section>
+
+<section id="screenshots">
+  <div class="wrap">
+    <h2>Screenshots</h2>
+    <div class="gallery">
+      <figure><a href="screenshots/triage.png"><img src="screenshots/triage.png" alt="Triage: risk score and findings" loading="lazy"></a><figcaption><b>Triage:</b> risk score and the findings behind it</figcaption></figure>
+      <figure><a href="screenshots/overview.png"><img src="screenshots/overview.png" alt="Overview of a sample" loading="lazy"></a><figcaption><b>Overview:</b> file identity, binary details, top findings</figcaption></figure>
+      <figure><a href="screenshots/strings-iocs.png"><img src="screenshots/strings-iocs.png" alt="Strings and IOCs" loading="lazy"></a><figcaption><b>Strings and IOCs:</b> categorised, searchable, cross-referenced</figcaption></figure>
+      <figure><a href="screenshots/disassembly.png"><img src="screenshots/disassembly.png" alt="Disassembly view" loading="lazy"></a><figcaption><b>Disassembly:</b> linked to the graph view</figcaption></figure>
+      <figure><a href="screenshots/control-flow-graph.png"><img src="screenshots/control-flow-graph.png" alt="Control-flow graph" loading="lazy"></a><figcaption><b>Control-flow graph:</b> side by side with the code</figcaption></figure>
+      <figure><a href="screenshots/relations.png"><img src="screenshots/relations.png" alt="Call relations graph" loading="lazy"></a><figcaption><b>Relations:</b> callers and callees around a function</figcaption></figure>
+      <figure><a href="screenshots/compare.png"><img src="screenshots/compare.png" alt="Comparing two builds" loading="lazy"></a><figcaption><b>Compare:</b> two builds, function by function</figcaption></figure>
+      <figure><a href="screenshots/azerbaijani-ui.png"><img src="screenshots/azerbaijani-ui.png" alt="OctoV in Azerbaijani" loading="lazy"></a><figcaption><b>First-class Azerbaijani interface</b></figcaption></figure>
+    </div>
+    <p class="note">Screenshots show synthetic, harmless test files built for this purpose and a stock Windows system binary (Notepad). No real malware is involved.</p>
+    <div class="video"><b>Demo video:</b> coming soon</div>
+  </div>
+</section>
+
+<section id="roadmap">
+  <div class="wrap">
+    <h2>My role &amp; roadmap</h2>
+    <div class="two">
+      <div class="card">
+        <h3>My role: sole developer</h3>
+        <p>I designed and built OctoV on my own: product direction, architecture, implementation, testing and UI/UX.</p>
+      </div>
+      <div class="card">
+        <h3>Status &amp; roadmap</h3>
+        <p style="margin-bottom:10px"><b style="color:var(--text)">Status:</b> in active development · pre-release.</p>
+        <ul class="list">
+          <li>Dynamic analysis</li>
+          <li>HTML/PDF reports</li>
+          <li>STIX 2.1 / MISP / Snort export</li>
+          <li>Guided analysis workflows</li>
+          <li>Plugin API</li>
+          <li>PDB (debug symbol) support</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="source">
+  <div class="wrap">
+    <h2>Source code</h2>
+    <p class="lead">Private — commercial product. Access can be provided on request for interviews.</p>
+    <p class="lead"><b>Fakhraddin Mashadizada</b>, Information Security student (SOC / Security Engineering)</p>
+    <div class="cta">
+      <a class="btn" href="https://www.linkedin.com/in/fakhraddin-m-567201318" rel="noopener noreferrer">LinkedIn</a>
+      <a class="btn ghost" href="https://github.com/m3dvsa-35" rel="noopener noreferrer">GitHub</a>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    © 2026 Fakhraddin Mashadizada. All rights reserved.<br>
+    This page contains documentation and screenshots only. No source code is included.
+  </div>
+</footer>
+
+</body>
+</html>
